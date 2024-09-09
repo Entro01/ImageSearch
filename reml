@@ -1,0 +1,105 @@
+import pandas as pd
+import imagehash
+from PIL import Image
+import aiohttp
+import asyncio
+from io import BytesIO
+from tqdm.asyncio import tqdm as async_tqdm
+from tqdm.notebook import tqdm
+import boto3
+import time
+
+# Initialize DynamoDB Client
+dynamodb = boto3.resource('dynamodb', region_name='your-region')
+table = dynamodb.Table('your-dynamodb-table')
+
+# Read CSV
+df = pd.read_csv('image_data.csv')
+df = df.dropna(subset=['small_image'])
+
+# Image fetching
+async def fetch_image(session, url):
+    async with session.get(url) as response:
+        if response.status == 200:
+            img_data = await response.read()
+            return Image.open(BytesIO(img_data)).convert('RGB')
+        else:
+            raise IOError(f"Failed to fetch image from {url}, status code: {response.status}")
+
+# Perceptual hash generation for 707x1000 resolution
+def calculate_phash(img):
+    target_size = (707, 1000)
+    img = img.resize(target_size, Image.Resampling.LANCZOS)
+    phash = imagehash.phash(img)
+    return str(phash)
+
+# DynamoDB insert function
+def insert_into_dynamodb(entity_id, sku, small_image, phash):
+    table.put_item(
+        Item={
+            'entity_id': entity_id,
+            'sku': sku,
+            'small_image': small_image,
+            'phash': phash
+        }
+    )
+
+# Async processing of images
+async def process_image(session, row):
+    image_url = f"https://d1it09c4puycyh.cloudfront.net/707x1000/catalog/product{row['small_image'].strip()}"
+    try:
+        img = await fetch_image(session, image_url)
+        phash = calculate_phash(img)
+        return {
+            'entity_id': row['entity_id'],
+            'sku': row['sku'],
+            'small_image': row['small_image'],
+            'phash': phash
+        }
+    except Exception as e:
+        print(f"Failed to process image for SKU {row['sku']}: {e}")
+        return None
+
+# Main function to process and insert into DynamoDB with a resume index
+async def process_images(start_idx=0, batch_size=50):
+    async with aiohttp.ClientSession() as session:
+        pbar = tqdm(total=len(df) - start_idx, initial=start_idx, desc="Processing Images")
+        tasks = []
+        batch = []
+        
+        for idx, row in df.iterrows():
+            if idx < start_idx:
+                continue
+            tasks.append(process_image(session, row))
+            if len(tasks) == batch_size:  # Execute in batches
+                results = await async_tqdm.gather(*tasks)
+                for result in results:
+                    if result:
+                        insert_into_dynamodb(result['entity_id'], result['sku'], result['small_image'], result['phash'])
+                tasks = []  # Reset tasks for the next batch
+                pbar.update(batch_size)
+            # Manually save progress to avoid lost work in case of crash
+            with open("progress.txt", "w") as f:
+                f.write(str(idx))
+        
+        # Process remaining tasks in case they are less than batch_size
+        if tasks:
+            results = await async_tqdm.gather(*tasks)
+            for result in results:
+                if result:
+                    insert_into_dynamodb(result['entity_id'], result['sku'], result['small_image'], result['phash'])
+            pbar.update(len(tasks))
+        
+        pbar.close()
+
+# Function to read progress from the last known index
+def get_last_progress():
+    try:
+        with open("progress.txt", "r") as f:
+            return int(f.read())
+    except FileNotFoundError:
+        return 0
+
+# Start processing from the last known index or from 0
+last_progress = get_last_progress()
+await process_images(start_idx=last_progress)
