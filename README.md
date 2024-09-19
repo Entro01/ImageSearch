@@ -41,11 +41,9 @@ Before you begin, ensure you have the following installed:
 
     Before deploying, you need to modify the application_phash.py file to configure the OpenSearch settings:
 
-        Open application_phash.py.
+       1) Open application_phash.py.
 
-        Locate the OpenSearch configuration section and update the opensearch_url and auth with your OpenSearch endpoint and authentication details.
-
-        python
+       2) Locate the OpenSearch configuration section and update the opensearch_url and auth with your OpenSearch endpoint and authentication details.
 
     ## OpenSearch configuration
     opensearch_url = "https://your-opensearch-endpoint"
