@@ -5,6 +5,7 @@ import imagehash
 from io import BytesIO
 import requests
 from requests.auth import HTTPBasicAuth
+import json
 
 app = FastAPI()
 
