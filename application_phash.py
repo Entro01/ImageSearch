@@ -9,8 +9,8 @@ from requests.auth import HTTPBasicAuth
 app = FastAPI()
 
 # OpenSearch configuration
-opensearch_url = "https://search-imagehash-beqqt46rp2xv6agh7tohq5it7i.us-east-1.es.amazonaws.com/phash_index/_search"
-auth = HTTPBasicAuth('admin', '1337@Open')
+opensearch_url = ""
+auth = HTTPBasicAuth('username', 'pswd')
 
 async def fetch_image(url: str):
     async with aiohttp.ClientSession() as session:
@@ -21,6 +21,18 @@ async def fetch_image(url: str):
             else:
                 raise HTTPException(status_code=404, detail="Image not found")
 
+# def calculate_phash(img):
+#     long_side = max(img.size)
+#     ratio = 512 / long_side
+#     new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+#     img = img.resize(new_size, Image.Resampling.LANCZOS)
+#     new_img = Image.new('RGB', (512, 512), (255, 255, 255))
+#     paste_pos = ((512 - new_size[0]) // 2, (512 - new_size[1]) // 2)
+#     new_img.paste(img, paste_pos)
+#     phash = imagehash.phash(new_img)
+#     binary_string = f"{phash:0>64b}"
+#     return [int(bit) for bit in binary_string]
+
 def calculate_phash(img):
     long_side = max(img.size)
     ratio = 512 / long_side
@@ -29,12 +41,19 @@ def calculate_phash(img):
     new_img = Image.new('RGB', (512, 512), (255, 255, 255))
     paste_pos = ((512 - new_size[0]) // 2, (512 - new_size[1]) // 2)
     new_img.paste(img, paste_pos)
+    
+    # converting phash to binary
     phash = imagehash.phash(new_img)
-    # Convert pHash to a list of binary integers
-    binary_string = f"{phash:0>64b}"
+    
+    # imageHash to integer and then to binary string
+    phash_int = int(str(phash), 16)  # converting pHash to a hexadecimal integer
+    binary_string = f"{phash_int:0>64b}"  # converting to a 64-bit binary string
+    
+    # converting the binary string to a list of binary integers
     return [int(bit) for bit in binary_string]
 
-def query_opensearch(phash, top_n: int = 3):
+
+def query_opensearch(phash, top_n: int = 1):
     query = {
         "size": top_n,
         "query": {
@@ -54,20 +73,19 @@ def query_opensearch(phash, top_n: int = 3):
         raise HTTPException(status_code=500, detail=f"Error querying OpenSearch: {response.text}")
 
 @app.get("/find_similar/")
-async def find_similar(image_url: str = Query(..., description="URL of the image to find similar items for")):
+async def find_similar(
+    image_url: str = Query(..., description="URL of the image to find similar items for"),
+    top: int = Query(1, description="Number of similar URLs to return")
+):
     try:
-        # Fetch and calculate pHash for the input image
         img = await fetch_image(image_url)
         input_phash = calculate_phash(img)
         
-        # Query OpenSearch for similar pHash
-        search_results = query_opensearch(input_phash)
+        search_results = query_opensearch(input_phash, top_n=top)
         
-        # Define base_url and dimensions for constructing image URLs
         base_url = "https://d1it09c4puycyh.cloudfront.net"
         dimensions = "355x503"
         
-        # Get the top matches and return results
         results = []
         for result in search_results:
             image_url = f"{base_url}/{dimensions}/catalog/product{result['_source']['small_image'].strip()}"
