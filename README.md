@@ -38,7 +38,30 @@ Before you begin, ensure you have the following installed:
    pip install -r requirements.txt
    ```
 
-4. **Run the Application Locally**
+4. **Configuration**
+
+    Before deploying, you need to modify the application_phash.py file to configure the OpenSearch settings:
+
+        Open application_phash.py.
+
+        Locate the OpenSearch configuration section and update the opensearch_url and auth with your OpenSearch endpoint and authentication details.
+
+        python
+
+    # OpenSearch configuration
+    opensearch_url = "https://your-opensearch-endpoint"
+    auth = HTTPBasicAuth('your-username', 'your-password')
+
+    For example:
+
+    python
+
+        # OpenSearch configuration
+        opensearch_url = "https://search-imagehash-beqqt46rp2xv6agh7tohq5it7i.aos.us-east-1.on.aws"
+        auth = HTTPBasicAuth('admin', '1234')
+
+
+5. **Run the Application Locally**
 
    ```bash
    fastapi dev application_phash.py
@@ -95,3 +118,20 @@ Before you begin, ensure you have the following installed:
 ## Common Issues
 
 - use eb logs to diagnose issues incase the deployment fails
+
+## Querying the Application
+
+    You can send queries to your deployed application to find similar images. Use the following URL format:
+
+    http://<your-environment-url>/find_similar/?image_url=<image_url>&top=<number_of_results>
+
+        <your-environment-url>: Replace with the URL of your Elastic Beanstalk environment.
+        <image_url>: The URL of the image you want to find similar images for.
+        <number_of_results>: The number of KNN neighbors (results) to retrieve (default value: 1).
+
+    For example:
+
+    bash
+
+    http://imagesearch3-dev.ap-south-1.elasticbeanstalk.com/find_similar/?image_url=https://d1it09c4puycyh.cloudfront.net/707x1000/catalog/product/6/6/6619-RED_1.jpg&top=3
+
