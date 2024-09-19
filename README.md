@@ -1,3 +1,4 @@
+```markdown
 # FastAPI Project Deployment on AWS Elastic Beanstalk
 
 ## Overview
