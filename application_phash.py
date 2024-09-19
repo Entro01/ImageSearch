@@ -9,8 +9,8 @@ from requests.auth import HTTPBasicAuth
 app = FastAPI()
 
 # OpenSearch configuration
-opensearch_url = ""
-auth = HTTPBasicAuth('username', 'pswd')
+opensearch_url = "https://search-imagehash-beqqt46rp2xv6agh7tohq5it7i.aos.us-east-1.on.aws"
+auth = HTTPBasicAuth('admin', '1337@Open')
 
 async def fetch_image(url: str):
     async with aiohttp.ClientSession() as session:
