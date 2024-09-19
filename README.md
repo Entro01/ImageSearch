@@ -47,7 +47,7 @@ Before you begin, ensure you have the following installed:
 
         python
 
-    # OpenSearch configuration
+    ## OpenSearch configuration
     opensearch_url = "https://your-opensearch-endpoint"
     auth = HTTPBasicAuth('your-username', 'your-password')
 
