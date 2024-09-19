@@ -65,8 +65,8 @@ def query_opensearch(phash, top_n: int = 1):
             }
         }
     }
-    response = requests.post(opensearch_url, json=query, auth=auth)
-    
+    response = requests.get(f"{opensearch_url}/_search", params={"source": json.dumps(query), "source_content_type": "application/json"}, auth=auth)
+   
     if response.status_code == 200:
         return response.json()['hits']['hits']
     else:
