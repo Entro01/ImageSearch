@@ -134,3 +134,4 @@ Before you begin, ensure you have the following installed:
 
     http://imagesearch3-dev.ap-south-1.elasticbeanstalk.com/find_similar/?image_url=https://d1it09c4puycyh.cloudfront.net/707x1000/catalog/product/6/6/6619-RED_1.jpg&top=3
 
+https://youtu.be/BNOYTbRbaFQ?si=YTLeQZmb96OF8vvn (opensearch domain creation under free tier)
