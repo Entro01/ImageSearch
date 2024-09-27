@@ -44,7 +44,7 @@ Once the table is created, you can use the SageMaker notebook environment to run
 
 After processing all batches, a single item in the table would resemble this:
 
-![DynamoDB Single Item Example](.images/dynamo_db_item.jpg)
+![DynamoDB Single Item Example](./images/dynamo_db_item.jpg)
 
 ## Optimizing Search with OpenSearch
 
@@ -64,7 +64,7 @@ The script includes functions to:
 - **Scan DynamoDB** in batches and convert the pHash values into a vector representation.
 - **Send bulk requests** to populate OpenSearch with the converted data.
 
-![Successful Export](.images/opensearch_data.jpg)
+![Successful Export](./images/opensearch_data.jpg)
 
 The ```view_opensearch_data()``` function will show you 10 items that were added to your OpenSearch index, use this to verify data transfer to your OpenSearch index.
 
@@ -117,7 +117,7 @@ Before you begin, ensure you have the following installed:
       2) Locate the OpenSearch configuration section and update the opensearch_url and auth with your OpenSearch endpoint and authentication details.
 
     ### OpenSearch configuration
-    opensearch_url = "https://your-opensearch-endpoint"
+    opensearch_url = ```"https://your-opensearch-endpoint"```
     auth = HTTPBasicAuth('your-username', 'your-password')
 
     For example:
