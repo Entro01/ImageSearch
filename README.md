@@ -17,6 +17,9 @@ For example:
 ```bash
 http://imagesearch3-dev.ap-south-1.elasticbeanstalk.com/find_similar/?image_url=https://d1it09c4puycyh.cloudfront.net/707x1000/catalog/product/6/6/6619-RED_1.jpg&top=3
 ```
+The output of the API call would resemble this:
+
+![API output](./images/api_output.jpg)
 
 ## Creating the SageMaker Domain and Notebook
 
@@ -74,7 +77,7 @@ Once you finish running this script, your OpenSearch index will be populated wit
 
 ## Overview
 
-Now you have set up your OpenSearch endpoint This repository contains a FastAPI application that you can deploy on AWS Elastic Beanstalk. Following are the instructions for setting up the project locally, running the application, and deploying it to AWS Elastic Beanstalk.
+Now that you have set up your OpenSearch endpoint, you can deploy the API as a FastAPI application on AWS Elastic Beanstalk. Following are the instructions for setting up the project locally, running the application, and deploying it to AWS Elastic Beanstalk.
 
 ## Prerequisites
 
