@@ -44,7 +44,7 @@ Before you begin, ensure you have the following installed:
       1) Open application_phash.py.
       2) Locate the OpenSearch configuration section and update the opensearch_url and auth with your OpenSearch endpoint and authentication details.
 
-    ## OpenSearch configuration
+    ### OpenSearch configuration
     opensearch_url = "https://your-opensearch-endpoint"
     auth = HTTPBasicAuth('your-username', 'your-password')
 
