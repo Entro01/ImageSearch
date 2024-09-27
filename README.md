@@ -2,7 +2,7 @@
 
 The goal of this project was to develop an API for an eCommerce clothing store to prevent duplicate products from being added to their database. The system checks for similar images in the company's database and returns the top matches, helping to identify duplicate listings. The API takes an image URL as input and returns the most similar images from the database along with the match percentage.
 
-The API allows users to query for similar images using the following format:
+The API, (when hosted on Elastic Beanstalk) allows users to query for similar images using the following format:
 
 ```bash
 http://<your-environment-url>/find_similar/?image_url=<image_url>&top=<number_of_results>
@@ -38,14 +38,13 @@ You need to create a DynamoDB table to store the perceptual hashes (pHash) for e
   - `small_image`: URL to the image.
   - `phash`: Perceptual hash value of the image stored as a hexadecimal string.
 
-The table structure will depend on your dataset, this structure is for the dataset provided in this repository. Keep in mind the **Table Name**, and replace the table name in the repository scripts with the your table name in the next steps.
+The table structure will depend on your dataset, this structure is for the dataset provided in this repository. Replace the table name in the repository scripts with the your table name in the next steps.
 
 Once the table is created, you can use the SageMaker notebook environment to run `processing_template_phash.ipynb`. This script processes images in batches and populates the DynamoDB table by generating a pHash for each image.
 
 After processing all batches, a single item in the table would resemble this:
 
 ![DynamoDB Single Item Example](.images/dynamo_db_item.jpg)
-(Screenshot of a single item)
 
 ## Optimizing Search with OpenSearch
 
@@ -54,7 +53,7 @@ Running a nearest neighbor search directly on DynamoDB can be inefficient and co
 ### Setting Up OpenSearch
 
 1. Create an OpenSearch domain using the following tutorial, which covers the steps under the free tier: [OpenSearch Domain Creation Tutorial](https://youtu.be/BNOYTbRbaFQ?si=YTLeQZmb96OF8vvn).
-2. Keep in mind the **Index Name**, and replace the index name in the repository scripts with the your index name in the next steps.
+2. Replace the index name in the repository scripts with the your index name in the next steps.
 
 ### Populating OpenSearch with Data from DynamoDB
 
@@ -66,7 +65,6 @@ The script includes functions to:
 - **Send bulk requests** to populate OpenSearch with the converted data.
 
 ![Successful Export](.images/opensearch_data.jpg)
-(Successful Export)
 
 The ```view_opensearch_data()``` function will show you 10 items that were added to your OpenSearch index, use this to verify data transfer to your OpenSearch index.
 
