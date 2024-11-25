@@ -28,7 +28,7 @@ To begin, you will need to create a SageMaker domain and then set up a notebook 
 1. Go to AWS SageMaker and create a SageMaker domain.
 2. Create a notebook instance in the domain where you will execute the provided scripts.
 3. Refer to the official AWS SageMaker documentation for detailed steps: [AWS SageMaker Getting Started Guide](https://docs.aws.amazon.com/sagemaker/latest/dg/gs.html).
-4. Once the domain and notebook are set up, create a DynamoDB table and then proceed to use the `processing_template_phash.ipynb` file.
+4. Once the domain and notebook are set up, create a DynamoDB table and then proceed to use the `similar_image_checker_runner_scripts/processing_template_phash.ipynb` file.
 
 ## Creating and populating the DynamoDB Table
 
@@ -43,7 +43,7 @@ You need to create a DynamoDB table to store the perceptual hashes (pHash) for e
 
 The table structure will depend on your dataset, this structure is for the dataset provided in this repository. Replace the table name in the repository scripts with the your table name in the next steps.
 
-Once the table is created, you can use the SageMaker notebook environment to run `processing_template_phash.ipynb`. This script processes images in batches and populates the DynamoDB table by generating a pHash for each image.
+Once the table is created, you can use the SageMaker notebook environment to run `similar_image_checker_runner_scripts/processing_template_phash.ipynb`. This script processes images in batches and populates the DynamoDB table by generating a pHash for each image.
 
 After processing all batches, a single item in the table would resemble this:
 
@@ -60,7 +60,7 @@ Running a nearest neighbor search directly on DynamoDB can be inefficient and co
 
 ### Populating OpenSearch with Data from DynamoDB
 
-After setting up OpenSearch, use the `dynamo_to_opensearch.ipynb` notebook to populate your OpenSearch index with the data stored in DynamoDB. This notebook script extracts the items from DynamoDB, converts the pHash values into binary vectors, and pushes them into OpenSearch.
+After setting up OpenSearch, use the `similar_image_checker_runner_scripts/dynamo_to_opensearch.ipynb` notebook to populate your OpenSearch index with the data stored in DynamoDB. This notebook script extracts the items from DynamoDB, converts the pHash values into binary vectors, and pushes them into OpenSearch.
 
 The script includes functions to:
 - **Create the OpenSearch index** with K-Nearest Neighbors (KNN) enabled for efficient similarity search.
@@ -218,7 +218,7 @@ At first, I attempted to solve the problem by leveraging ResNet, a convolutional
 
 The following files were used for this approach:
 
-- **`processing_template_resnet.ipynb`**: This script processes product images by extracting features using a pre-trained ResNet model. These features are stored in DynamoDB for later retrieval.
+- **`similar_image_checker_runner_scripts/processing_template_resnet.ipynb`**: This script processes product images by extracting features using a pre-trained ResNet model. These features are stored in DynamoDB for later retrieval.
   - A SageMaker script was developed to fetch the images, preprocess them (resize, crop, normalize), and extract ResNet features.
   - The features were then stored in a DynamoDB table (`LuluFeatureStore`) for fast retrieval and comparison.
 
