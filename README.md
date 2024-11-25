@@ -206,24 +206,4 @@ Before you begin, ensure you have the following installed:
 
     http://imagesearch3-dev.ap-south-1.elasticbeanstalk.com/find_similar/?image_url=https://d1it09c4puycyh.cloudfront.net/707x1000/catalog/product/6/6/6619-RED_1.jpg&top=3
 
-https://youtu.be/BNOYTbRbaFQ?si=YTLeQZmb96OF8vvn (opensearch domain creation under free tier)
-
-# Background
-
-## Initial Approach
-
-### ResNet Features Extraction
-
-At first, I attempted to solve the problem by leveraging ResNet, a convolutional neural network (CNN), to extract image features. The goal was to match images by comparing their high-level features, which are commonly used in object recognition. 
-
-The following files were used for this approach:
-
-- **`similar_image_checker_runner_scripts/processing_template_resnet.ipynb`**: This script processes product images by extracting features using a pre-trained ResNet model. These features are stored in DynamoDB for later retrieval.
-  - A SageMaker script was developed to fetch the images, preprocess them (resize, crop, normalize), and extract ResNet features.
-  - The features were then stored in a DynamoDB table (`LuluFeatureStore`) for fast retrieval and comparison.
-
-- **`application_resnet.py`**: This FastAPI application provides an endpoint for querying similar images based on the ResNet features stored in DynamoDB. It uses K-Nearest Neighbors (KNN) to find the closest matches.
-
-While this approach worked, the results were not satisfactory. The issue stemmed from the nature of CNNs, which focus on high-level semantic understanding rather than pixel-by-pixel comparison. This meant that even visually similar images (e.g., different angles of the same product) could have quite different feature representations, resulting in poor similarity scores.
-
 # Experimenting with 
