@@ -189,6 +189,8 @@ Before you begin, ensure you have the following installed:
 ## Common Issues
 
 - use eb logs to diagnose issues incase the deployment fails
+- make sure the pypiwin and pywin packages are not installed in your environment and are not in the requirements.txt file
+- refer to [this](https://testdriven.io/blog/fastapi-elastic-beanstalk/) for a guide
 
 ## Querying the Application
 
