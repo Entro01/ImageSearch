@@ -1,1 +1,1 @@
-web: gunicorn application_phash:app -w 4 -k uvicorn.workers.UvicornWorker
+web: gunicorn application:app -w 4 -k uvicorn.workers.UvicornWorker
