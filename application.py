@@ -58,69 +58,41 @@ def calculate_phash(img):
     return [int(bit) for bit in binary_string]
 
 
-# def query_opensearch(embedding, top_n: int = 1, index_type: str = None):
-#     """
-#     Query OpenSearch with vector embedding
+def query_opensearch(embedding, top_n: int = 1, index_type: str = None):
+    """
+    Query OpenSearch with vector embedding
    
-#     Args:
-#         embedding (list): Image embedding vector
-#         top_n (int): Number of top results to return
-#         index_type (str, optional): Type of index to query ('phash' or 'vector')
+    Args:
+        embedding (list): Image embedding vector
+        top_n (int): Number of top results to return
+        index_type (str, optional): Type of index to query ('phash' or 'vector')
    
-#     Returns:
-#         list: Search results from OpenSearch
-#     """
-#     # Determine the index type based on the calling context if not explicitly specified
-#     if index_type is None:
-#         # If embedding looks like a perceptual hash (typically shorter, integer-like)
-#         if isinstance(embedding, (int, list)) and len(embedding) < 100:
-#             index_type = 'phash'
-#         else:
-#             index_type = 'vector'
+    Returns:
+        list: Search results from OpenSearch
+    """
+    # Determine the index type based on the calling context if not explicitly specified
+    if index_type is None:
+        # If embedding looks like a perceptual hash (typically shorter, integer-like)
+        if isinstance(embedding, (int, list)) and len(embedding) < 100:
+            index_type = 'phash'
+        else:
+            index_type = 'vector'
     
-#     # Construct the query based on the index type
-#     if index_type == 'phash':
-#         query = {
-#             "size": top_n,
-#             "query": {
-#                 "knn": {
-#                     "phash": {
-#                         "vector": embedding,
-#                         "k": top_n
-#                     }
-#                 }
-#             }
-#         }
-#     elif index_type == 'vector':
-#         query = {
-#             "size": top_n,
-#             "query": {
-#                 "knn": {
-#                     "vector": {
-#                         "vector": embedding,
-#                         "k": top_n
-#                     }
-#                 }
-#             }
-#         }
-#     else:
-#         raise ValueError(f"Invalid index type: {index_type}")
-    
-#     # Perform the search
-#     response = requests.get(f"{opensearch_url}/_search", 
-#                             params={
-#                                 "source": json.dumps(query), 
-#                                 "source_content_type": "application/json"
-#                             }, 
-#                             auth=auth)
-    
-#     if response.status_code == 200:
-#         return response.json()['hits']['hits']
-#     else:
-#         raise HTTPException(status_code=500, detail=f"Error querying OpenSearch: {response.text}")
-    
-def query_opensearch(embedding, top_n: int = 1):
-    query = {
+    # Construct the query based on the index type
+    if index_type == 'phash':
+        query = {
+            "size": top_n,
+            "query": {
+                "knn": {
+                    "phash": {
+                        "vector": embedding,
+                        "k": top_n
+                    }
+                }
+            }
+        }
+    elif index_type == 'vector':
+        query = {
         "size": top_n,
         "query": {
             "knn": {
@@ -132,12 +104,36 @@ def query_opensearch(embedding, top_n: int = 1):
         },
         "_source": ["product_id"]  # Only retrieve product_id field
     }
+    else:
+        raise ValueError(f"Invalid index type: {index_type}")
+    
+    # Perform the search
     response = requests.get(f"{opensearch_url}/_search", json=query, auth=auth)
-   
+    
     if response.status_code == 200:
         return response.json()['hits']['hits']
     else:
         raise HTTPException(status_code=500, detail=f"Error querying OpenSearch: {response.text}")
+    
+# def query_opensearch(embedding, top_n: int = 1):
+#     query = {
+#         "size": top_n,
+#         "query": {
+#             "knn": {
+#                 "vector": {
+#                     "vector": embedding,
+#                     "k": top_n
+#                 }
+#             }
+#         },
+#         "_source": ["product_id"]  # Only retrieve product_id field
+#     }
+#     response = requests.get(f"{opensearch_url}/_search", json=query, auth=auth)
+   
+#     if response.status_code == 200:
+#         return response.json()['hits']['hits']
+#     else:
+#         raise HTTPException(status_code=500, detail=f"Error querying OpenSearch: {response.text}")
 
 @app.get("/find_same/")
 async def find_similar(
@@ -234,14 +230,6 @@ async def find_similar_by_embedding(
         # Read the uploaded file
         contents = await image.read()
         
-        # # Add content type validation including webp
-        # allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
-        # if image.content_type not in allowed_types:
-        #     raise HTTPException(
-        #         status_code=400, 
-        #         detail=f"Invalid file type. Allowed types are: {', '.join(allowed_types)}"
-        #     )
-        
         # Preprocess the image
         base64_image = preprocess_image_for_titan(contents)
         
@@ -301,16 +289,6 @@ async def find_similar_by_url(request: ImageUrlRequest):
         # Get image content
         image_contents = response.content
         
-        # # Validate content type
-        # content_type = response.headers.get('content-type', '')
-        # allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
-        
-        # if not any(allowed_type in content_type.lower() for allowed_type in allowed_types):
-        #     raise HTTPException(
-        #         status_code=400,
-        #         detail=f"Invalid image type. URL must point to one of: {', '.join(allowed_types)}"
-        #     )
-        
         # Convert to base64
         base64_image = base64.b64encode(image_contents).decode('utf-8')
         
@@ -318,7 +296,7 @@ async def find_similar_by_url(request: ImageUrlRequest):
         embedding = create_image_embedding(base64_image)
         
         # Query OpenSearch
-        search_results = query_opensearch(embedding, top_n=request.top)
+        search_results = query_opensearch(embedding, top_n=request.top, index_type='vector')
         
         results = []
         for result in search_results:
