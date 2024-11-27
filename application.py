@@ -129,9 +129,10 @@ def query_opensearch(embedding, top_n: int = 1):
                     "k": top_n
                 }
             }
-        }
+        },
+        "_source": ["product_id"]  # Only retrieve product_id field
     }
-    response = requests.get(f"{opensearch_url}/_search", params={"source": json.dumps(query), "source_content_type": "application/json"}, auth=auth)
+    response = requests.get(f"{opensearch_url}/_search", json=query, auth=auth)
    
     if response.status_code == 200:
         return response.json()['hits']['hits']
@@ -263,7 +264,7 @@ async def find_similar_by_embedding(
         
         results = []
         for result in search_results:
-            image_url = f"{base_url}/{dimensions}/catalog/product{result['_source']['small_image'].strip()}"
+            image_url = f"{base_url}/{dimensions}/catalog/product{result['_source']['image_one'].strip()}"
             results.append({
                 "product_id": result["_source"]["product_id"],
                 "image_url": image_url,
@@ -326,17 +327,10 @@ async def find_similar_by_url(request: ImageUrlRequest):
         # Query OpenSearch
         search_results = query_opensearch(embedding, top_n=request.top)
         
-        # Prepare results
-        base_url = "https://d1it09c4puycyh.cloudfront.net"
-        dimensions = "355x503"
-        
         results = []
         for result in search_results:
-            image_url = f"{base_url}/{dimensions}/catalog/product{result['_source']['small_image'].strip()}"
             results.append({
                 "product_id": result["_source"]["product_id"],
-                "image_url": image_url,
-                "score": result["_score"]
             })
         
         return {"matches": results}
