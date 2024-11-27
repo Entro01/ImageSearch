@@ -255,6 +255,87 @@ async def find_similar_by_embedding(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+    
+    from fastapi import FastAPI, HTTPException, Query
+import requests
+import base64
+from typing import Optional
+from pydantic import BaseModel, HttpUrl
+
+class ImageUrlRequest(BaseModel):
+    url: HttpUrl
+    top: Optional[int] = 1
+
+@app.post("/find_similar_by_url/")
+async def find_similar_by_url(request: ImageUrlRequest):
+    """
+    Endpoint to find similar images using image URL
+    
+    Args:
+        request (ImageUrlRequest): Contains image URL and optional top parameter
+    
+    Returns:
+        dict: Similar images with their scores
+    """
+    try:
+        # Download image from URL
+        response = requests.get(str(request.url), timeout=10)
+        response.raise_for_status()
+        
+        # Get image content
+        image_contents = response.content
+        
+        # # Validate content type
+        # content_type = response.headers.get('content-type', '')
+        # allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
+        
+        # if not any(allowed_type in content_type.lower() for allowed_type in allowed_types):
+        #     raise HTTPException(
+        #         status_code=400,
+        #         detail=f"Invalid image type. URL must point to one of: {', '.join(allowed_types)}"
+        #     )
+        
+        # Convert to base64
+        base64_image = base64.b64encode(image_contents).decode('utf-8')
+        
+        # Generate embedding
+        embedding = create_image_embedding(base64_image)
+        
+        if embedding is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not generate image embedding"
+            )
+        
+        # Query OpenSearch
+        search_results = query_opensearch(embedding, top_n=request.top, index_type='vector')
+        
+        # Prepare results
+        base_url = "https://d1it09c4puycyh.cloudfront.net"
+        dimensions = "355x503"
+        
+        results = []
+        for result in search_results:
+            image_url = f"{base_url}/{dimensions}/catalog/product{result['_source']['small_image'].strip()}"
+            results.append({
+                "product_id": result["_source"]["product_id"],
+                "image_url": image_url,
+                "score": result["_score"]
+            })
+        
+        return {"matches": results}
+    
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error downloading image from URL: {str(e)}"
+        )
+    except Exception as e:
+        print(f"Detailed error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing image: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
