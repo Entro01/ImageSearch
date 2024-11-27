@@ -199,7 +199,7 @@ def create_image_embedding(image_base64):
         return final_response.get("embedding")
     
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Error creating embeddings: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error creating embeddings: {str(e)}")
 
 def preprocess_image_for_titan(image_contents: bytes) -> str:
     """
@@ -316,12 +316,6 @@ async def find_similar_by_url(request: ImageUrlRequest):
         
         # Generate embedding
         embedding = create_image_embedding(base64_image)
-        
-        # if embedding is None:
-        #     raise HTTPException(
-        #         status_code=400,
-        #         detail="Could not generate image embedding by url"
-        #     )
         
         # Query OpenSearch
         search_results = query_opensearch(embedding, top_n=request.top)
