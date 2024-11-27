@@ -1,3 +1,4 @@
+import io
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 import aiohttp
 from PIL import Image
@@ -210,6 +211,7 @@ async def find_similar_images(
         try:
             # Fetch image from URL
             contents = await fetch_image(image_url)
+            print(contents)
         except Exception as e:
             raise HTTPException(
                 status_code=400,
@@ -219,6 +221,9 @@ async def find_similar_images(
         # Process uploaded file
         try:
             contents = await image.read()
+            print(contents)
+            img = Image.open(io.BytesIO(contents))
+            img.verify()
         except Exception as e:
             raise HTTPException(
                 status_code=400,
