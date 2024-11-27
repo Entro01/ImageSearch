@@ -173,8 +173,7 @@ def create_image_embedding(image_base64):
         
         embedding_error = final_response.get("message")
         if embedding_error is not None:
-            print(f"Error creating embeddings: {embedding_error}")
-            return None
+            raise HTTPException(status_code=400, detail="Error creating embeddings: {embedding_error}")
         
         # Return embedding value
         return final_response.get("embedding")
