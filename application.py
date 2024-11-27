@@ -177,6 +177,7 @@ def create_image_embedding(image_base64):
         
         # Return embedding value
         return final_response.get("embedding")
+    
     except Exception as e:
         print(f"Error in creating embeddings: {str(e)}")
         return None
@@ -214,13 +215,13 @@ async def find_similar_by_embedding(
         # Read the uploaded file
         contents = await image.read()
         
-        # Add content type validation including webp
-        allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
-        if image.content_type not in allowed_types:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid file type. Allowed types are: {', '.join(allowed_types)}"
-            )
+        # # Add content type validation including webp
+        # allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
+        # if image.content_type not in allowed_types:
+        #     raise HTTPException(
+        #         status_code=400, 
+        #         detail=f"Invalid file type. Allowed types are: {', '.join(allowed_types)}"
+        #     )
         
         # Preprocess the image
         base64_image = preprocess_image_for_titan(contents)
