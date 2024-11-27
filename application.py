@@ -114,26 +114,6 @@ def query_opensearch(embedding, top_n: int = 1, index_type: str = None):
         return response.json()['hits']['hits']
     else:
         raise HTTPException(status_code=500, detail=f"Error querying OpenSearch: {response.text}")
-    
-# def query_opensearch(embedding, top_n: int = 1):
-#     query = {
-#         "size": top_n,
-#         "query": {
-#             "knn": {
-#                 "vector": {
-#                     "vector": embedding,
-#                     "k": top_n
-#                 }
-#             }
-#         },
-#         "_source": ["product_id"]  # Only retrieve product_id field
-#     }
-#     response = requests.get(f"{opensearch_url}/_search", json=query, auth=auth)
-   
-#     if response.status_code == 200:
-#         return response.json()['hits']['hits']
-#     else:
-#         raise HTTPException(status_code=500, detail=f"Error querying OpenSearch: {response.text}")
 
 @app.get("/find_same/")
 async def find_similar(
@@ -197,24 +177,6 @@ def create_image_embedding(image_base64):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error creating embeddings: {str(e)}")
 
-def preprocess_image_for_titan(image_contents: bytes) -> str:
-    """
-    Preprocess image for Titan model embedding generation
-    
-    Args:
-        image_contents (bytes): Raw image bytes
-    
-    Returns:
-        str: Base64 encoded preprocessed image
-    """
-    try:
-        # Simply encode the raw bytes to base64
-        base64_image = base64.b64encode(image_contents).decode('utf-8')
-        return base64_image
-    except Exception as e:
-        print(f"Error preprocessing image: {str(e)}")
-        return None
-
 @app.post("/find_similar_embedding/")
 async def find_similar_by_embedding(
     image: UploadFile = File(...),
@@ -231,7 +193,7 @@ async def find_similar_by_embedding(
         contents = await image.read()
         
         # Preprocess the image
-        base64_image = preprocess_image_for_titan(contents)
+        base64_image = base64.b64encode(contents).decode('utf-8')
         
         if base64_image is None:
             raise HTTPException(status_code=400, detail="Could not preprocess image")
