@@ -321,7 +321,7 @@ async def find_similar_by_url(request: ImageUrlRequest):
         if embedding is None:
             raise HTTPException(
                 status_code=400,
-                detail="Could not generate image embedding by url"
+                detail="Could not generate image embedding by url: {str(e)}"
             )
         
         # Query OpenSearch
