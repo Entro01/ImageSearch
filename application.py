@@ -182,6 +182,35 @@ def create_image_embedding(image_base64):
         print(f"Error in creating embeddings: {str(e)}")
         return None
 
+def preprocess_image_for_titan(image_contents: bytes) -> str:
+    """
+    Preprocess image for Titan model embedding generation
+    
+    Args:
+        image_contents (bytes): Raw image bytes
+    
+    Returns:
+        str: Base64 encoded preprocessed image
+    """
+    try:
+        # Open image and convert to RGB
+        image = Image.open(BytesIO(image_contents)).convert('RGB')
+        
+        # Resize if needed (Titan typically works well with images up to 2048x2048)
+        max_size = 2048
+        if max(image.size) > max_size:
+            ratio = max_size / max(image.size)
+            new_size = tuple(int(dim * ratio) for dim in image.size)
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+        
+        # Convert to base64
+        base64_image = base64.b64encode(image).decode('utf-8')
+        
+        return base64_image
+    except Exception as e:
+        print(f"Error preprocessing image: {str(e)}")
+        return None
+
 @app.post("/find_similar_embedding/")
 async def find_similar_by_embedding(
     image: UploadFile = File(...),
@@ -189,13 +218,6 @@ async def find_similar_by_embedding(
 ):
     """
     Endpoint to find similar images using Titan embedding
-    
-    Args:
-        image (UploadFile): Uploaded image file
-        top (int): Number of top similar results to return
-    
-    Returns:
-        dict: Similar product matches
     """
     if not image:
         raise HTTPException(status_code=400, detail="You must upload an image file.")
@@ -204,8 +226,11 @@ async def find_similar_by_embedding(
         # Read the uploaded file
         contents = await image.read()
         
-        # Convert to base64
-        base64_image = base64.b64encode(contents).decode('utf-8')
+        # Preprocess the image
+        base64_image = preprocess_image_for_titan(contents)
+        
+        if base64_image is None:
+            raise HTTPException(status_code=400, detail="Could not preprocess image")
         
         # Generate embedding
         embedding = create_image_embedding(base64_image)
@@ -226,7 +251,7 @@ async def find_similar_by_embedding(
             results.append({
                 "product_id": result["_source"]["product_id"],
                 "image_url": image_url,
-                "score": result["_score"]  # KNN similarity score
+                "score": result["_score"]
             })
         
         return {"matches": results}
@@ -234,7 +259,6 @@ async def find_similar_by_embedding(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
-
 if __name__ == "__main__":
     import uvicorn
-    # uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
