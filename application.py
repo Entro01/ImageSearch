@@ -9,7 +9,7 @@ import json
 import base64
 import boto3
 from typing import Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, field_validator
 
 # Configuration Constants
 OPENSEARCH_URL = "https://search-reverseimagesearch-j3nx2t2f42fy7wfayhbh3zyenq.aos.us-east-1.on.aws"
@@ -198,7 +198,14 @@ class ImageSearchRequest(BaseModel):
     """
     url: Optional[HttpUrl] = None
     image: Optional[UploadFile] = None
-    top: Optional[int] = Query(default=1, ge=1, le=10)
+    top: Optional[int] = 1
+
+    @field_validator('url', 'image', always=True)
+    def check_at_least_one_image_source(cls, v, values):
+        # Check if both url and image are None
+        if not values.get('url') and not values.get('image'):
+            raise ValueError("Either image URL or image file must be provided")
+        return v
 
 @app.post("/find_similar/")
 async def find_similar_images(
