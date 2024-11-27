@@ -199,8 +199,7 @@ def create_image_embedding(image_base64):
         return final_response.get("embedding")
     
     except Exception as e:
-        print(f"Error in creating embeddings: {str(e)}")
-        return None
+        raise HTTPException(status_code=400, detail="Error creating embeddings: {str(e)}")
 
 def preprocess_image_for_titan(image_contents: bytes) -> str:
     """
