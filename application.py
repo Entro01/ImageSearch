@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 import aiohttp
 from PIL import Image
 import imagehash
@@ -9,7 +9,7 @@ import json
 import base64
 import boto3
 from typing import Optional
-from pydantic import BaseModel, HttpUrl, field_validator
+from pydantic import BaseModel, HttpUrl, ValidationInfo, field_validator
 
 # Configuration Constants
 OPENSEARCH_URL = "https://search-reverseimagesearch-j3nx2t2f42fy7wfayhbh3zyenq.aos.us-east-1.on.aws"
@@ -32,12 +32,11 @@ app = FastAPI(
     description="API for finding similar images using perceptual hashing and vector embeddings"
 )
 
-async def fetch_image(url: str):
+async def fetch_image(url: str) -> bytes:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             if response.status == 200:
-                img_data = await response.read()
-                return Image.open(BytesIO(img_data)).convert('RGB')
+                return await response.read()
             else:
                 raise HTTPException(status_code=404, detail="Image not found")
 
@@ -187,79 +186,78 @@ def query_opensearch(embedding: list, top_n: int = 1, index_type: str = 'vector'
             detail=f"OpenSearch query failed: {str(e)}"
         )
     
-class ImageSearchRequest(BaseModel):
-    """
-    Pydantic model for image search requests supporting both URL and file uploads.
-    
-    Attributes:
-        url (Optional[HttpUrl]): URL of the image to search
-        image (Optional[UploadFile]): File upload of the image to search
-        top (Optional[int]): Number of top similar results to return
-    """
-    url: Optional[HttpUrl] = None
-    image: Optional[UploadFile] = None
-    top: Optional[int] = 1
-
-    @field_validator('url', 'image', always=True)
-    def check_at_least_one_image_source(cls, v, values):
-        # Check if both url and image are None
-        if not values.get('url') and not values.get('image'):
-            raise ValueError("Either image URL or image file must be provided")
-        return v
-
 @app.post("/find_similar/")
 async def find_similar_images(
-    request: ImageSearchRequest = Depends()
+    image_url: Optional[str] = Query(None, description="URL of the image to find similar items for"),
+    image: Optional[UploadFile] = File(None, description="Image file to find similar items for"),
+    top: int = Query(1, description="Number of similar URLs to return")
 ):
     """
     Unified endpoint for finding similar images via URL or file upload.
-    
-    Supports both image URL and file upload methods for similarity search.
-    Uses vector embeddings for matching.
-    
+   
+    Prioritizes image URL over file upload if both are provided.
+   
     Args:
-        request (ImageSearchRequest): Request containing image source and search parameters
-    
+        image_url (Optional[str]): URL of the image to search
+        image (Optional[UploadFile]): File upload of the image to search
+        top (int): Number of top similar results to return
+   
     Returns:
         dict: Matching product information with similarity scores
     """
-    try:
-        # Determine image source and process accordingly
-        if request.url:
+    # Prioritize URL if both URL and image are provided
+    if image_url:
+        try:
             # Fetch image from URL
-            img = await fetch_image(str(request.url))
-            contents = await request.url.read()
-        elif request.image:
-            # Process uploaded file
-            contents = await request.image.read()
-            img = Image.open(BytesIO(contents)).convert('RGB')
-        else:
-            raise HTTPException(status_code=400, detail="No image provided")
+            contents = await fetch_image(image_url)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to fetch image from URL: {str(e)}"
+            )
+    elif image:
+        # Process uploaded file
+        try:
+            contents = await image.read()
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to process uploaded image: {str(e)}"
+            )
+    else:
+        # No image source provided
+        raise HTTPException(
+            status_code=400,
+            detail="Either image URL or image file must be provided"
+        )
+    
+    try:
+        # Optional: Validate image (convert to PIL Image to check)
+        Image.open(BytesIO(contents)).convert('RGB')
         
         # Preprocess image
         base64_image = base64.b64encode(contents).decode('utf-8')
-        
+       
         # Generate embedding
         embedding = create_image_embedding(base64_image)
-        
+       
         # Search similar images
         search_results = query_opensearch(
-            embedding, 
-            top_n=request.top, 
+            embedding,
+            top_n=top,
             index_type='vector'
         )
-        
+       
         # Format results
         results = [
             {
                 "product_id": result["_source"]["product_id"],
-                "image_url": f"{BASE_CDN_URL}/{DEFAULT_IMAGE_DIMENSIONS}/catalog/product{result['_source'].get('image_one', '').strip()}",
                 "score": result["_score"]
             } for result in search_results
         ]
-        
+       
         return {"matches": results}
-    
+   
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image search failed: {str(e)}")
 
