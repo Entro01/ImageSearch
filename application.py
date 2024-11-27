@@ -193,19 +193,8 @@ def preprocess_image_for_titan(image_contents: bytes) -> str:
         str: Base64 encoded preprocessed image
     """
     try:
-        # Open image and convert to RGB
-        image = Image.open(BytesIO(image_contents)).convert('RGB')
-        
-        # Resize if needed (Titan typically works well with images up to 2048x2048)
-        max_size = 2048
-        if max(image.size) > max_size:
-            ratio = max_size / max(image.size)
-            new_size = tuple(int(dim * ratio) for dim in image.size)
-            image = image.resize(new_size, Image.Resampling.LANCZOS)
-        
-        # Convert to base64
-        base64_image = base64.b64encode(image).decode('utf-8')
-        
+        # Simply encode the raw bytes to base64
+        base64_image = base64.b64encode(image_contents).decode('utf-8')
         return base64_image
     except Exception as e:
         print(f"Error preprocessing image: {str(e)}")
@@ -225,6 +214,14 @@ async def find_similar_by_embedding(
     try:
         # Read the uploaded file
         contents = await image.read()
+        
+        # Add content type validation including webp
+        allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
+        if image.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file type. Allowed types are: {', '.join(allowed_types)}"
+            )
         
         # Preprocess the image
         base64_image = preprocess_image_for_titan(contents)
