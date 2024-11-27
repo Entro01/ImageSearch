@@ -10,7 +10,7 @@ import json
 import base64
 import boto3
 from typing import Optional
-from pydantic import BaseModel, HttpUrl, ValidationInfo, field_validator
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 # Configuration Constants
 OPENSEARCH_URL = "https://search-reverseimagesearch-j3nx2t2f42fy7wfayhbh3zyenq.aos.us-east-1.on.aws"
@@ -124,6 +124,23 @@ def create_image_embedding(image_base64: str) -> list:
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Embedding generation failed: {str(e)}")
+    
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    reraise=True
+)
+async def create_image_embedding_with_retry(image_base64: str) -> list:
+    """
+    Retry wrapper for create_image_embedding function
+    """
+    try:
+        embedding = create_image_embedding(image_base64)
+        # logger.info("Successfully created embedding")
+        return embedding
+    except Exception as e:
+        # logger.error(f"Error creating embedding: {str(e)}")
+        raise
 
 def query_opensearch(embedding: list, top_n: int = 1, index_type: str = 'vector') -> list:
     """
@@ -186,6 +203,55 @@ def query_opensearch(embedding: list, top_n: int = 1, index_type: str = 'vector'
             status_code=500, 
             detail=f"OpenSearch query failed: {str(e)}"
         )
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    reraise=True
+)
+async def query_opensearch_with_retry(embedding: list, top_n: int, index_type: str = 'vector') -> list:
+    """
+    Retry wrapper for query_opensearch function
+    """
+    try:
+        results = query_opensearch(embedding, top_n=top_n, index_type=index_type)
+        # logger.info("Successfully queried OpenSearch")
+        return results
+    except Exception as e:
+        # logger.error(f"Error querying OpenSearch: {str(e)}")
+        raise
+
+async def validate_and_resize_image(image_bytes: bytes, max_pixels: int = 1024*1024) -> bytes:
+    """
+    Validates image size and resizes if necessary.
+    
+    Args:
+        image_bytes: Original image bytes
+        max_pixels: Maximum allowed pixels (width * height)
+    
+    Returns:
+        bytes: Processed image bytes
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+    width, height = img.size
+    total_pixels = width * height
+    
+    if total_pixels > max_pixels:
+        # Calculate new dimensions while maintaining aspect ratio
+        ratio = (max_pixels / total_pixels) ** 0.5
+        new_width = int(width * ratio)
+        new_height = int(height * ratio)
+        
+        # Resize image
+        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Convert back to bytes
+        img_byte_arr = io.BytesIO()
+        img = img.convert('RGB')  # Ensure RGB format
+        img.save(img_byte_arr, format='JPEG', quality=85)
+        return img_byte_arr.getvalue()
+    
+    return image_bytes
     
 @app.post("/find_similar/")
 async def find_similar_images(
@@ -211,7 +277,7 @@ async def find_similar_images(
         try:
             # Fetch image from URL
             contents = await fetch_image(image_url)
-            print(contents)
+            print(contents[:5])
         except Exception as e:
             raise HTTPException(
                 status_code=400,
@@ -221,7 +287,7 @@ async def find_similar_images(
         # Process uploaded file
         try:
             contents = await image.read()
-            print(contents)
+            print(contents[:5])
             img = Image.open(io.BytesIO(contents))
             img.verify()
         except Exception as e:
@@ -237,21 +303,40 @@ async def find_similar_images(
         )
     
     try:
+        # Validate and resize image if needed
+        contents = await validate_and_resize_image(contents)
+        
         # Optional: Validate image (convert to PIL Image to check)
         Image.open(BytesIO(contents)).convert('RGB')
         
         # Preprocess image
         base64_image = base64.b64encode(contents).decode('utf-8')
-       
-        # Generate embedding
-        embedding = create_image_embedding(base64_image)
-       
-        # Search similar images
-        search_results = query_opensearch(
-            embedding,
-            top_n=top,
-            index_type='vector'
-        )
+        
+        # First, try to create embedding with retries
+        try:
+            embedding = await create_image_embedding_with_retry(base64_image)
+            # logger.info(f"Embedding created successfully after retries: {embedding[:2]}")
+        except RetryError as e:
+            # logger.error("All embedding creation attempts failed")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create embedding after multiple attempts"
+            )
+
+        # Only proceed to search if embedding succeeded
+        try:
+            search_results = await query_opensearch_with_retry(
+                embedding,
+                top_n=top,
+                index_type='vector'
+            )
+            # logger.info(f"Search completed successfully after retries")
+        except RetryError as e:
+            # logger.error("All search attempts failed")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to search after multiple attempts"
+            )
        
         # Format results
         results = [
